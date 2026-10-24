@@ -1,0 +1,21 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  '@scarf/scarf': true
+  esbuild: true
+  workerd: true
+permissions:
+  '@parcel/watcher':
+    build: true
+  '@prisma/engines':
+    build: false
+  onnxruntime-node:
+    build: true
+  prisma:
+    build: false
+    skills: true
+  protobufjs:
+    build: true
+  unrs-resolver:
+    build: true

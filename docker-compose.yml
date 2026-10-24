@@ -1,0 +1,89 @@
+name: aerosearch-stack
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: aerosearch_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./apps/api/.env
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - TYPESENSE_URL=http://typesense:8108
+      - TYPESENSE_API_KEY=tu_api_key_de_prueba
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      typesense:
+        condition: service_started
+    networks:
+      - aerosearch_network
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aerosearch_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-aerosearch}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-aerosearch}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aerosearch_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: aerosearch_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aerosearch_network
+
+  typesense:
+    image: typesense/typesense:0.25.2
+    container_name: aerosearch_typesense
+    restart: unless-stopped
+    ports:
+      - "8108:8108"
+    environment:
+      - TYPESENSE_DATA_DIR=/data
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-tu_api_key_de_prueba}
+      - TYPESENSE_ENABLE_CORS=true
+    volumes:
+      - typesense_data:/data
+    networks:
+      - aerosearch_network
+
+networks:
+  aerosearch_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  typesense_data:
